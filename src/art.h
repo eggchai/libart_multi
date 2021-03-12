@@ -23,7 +23,7 @@ extern "C" {
 #  define BROKEN_GCC_C99_INLINE
 # endif
 #endif
-
+//callback function, like function as parameter in C++
 typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
 
 /**
@@ -76,6 +76,7 @@ typedef struct {
 /**
  * Represents a leaf. These are
  * of arbitrary size, as they include the key.
+ * Single-value leaves
  */
 typedef struct {
     void *value;
@@ -193,6 +194,21 @@ art_leaf* art_maximum(art_tree *t);
  * @return 0 on success, or the return of the callback.
  */
 int art_iter(art_tree *t, art_callback cb, void *data);
+
+/**
+ * Range Query
+ * @arg t  The tree to query
+ * @arg cb
+ * @arg data
+ * @arg low The query lower limit
+ * @arg high The query higher limit
+ */
+int range_query(art_tree *t, art_callback cb,
+                void *data,
+                const unsigned char *low,
+                const unsigned char *high);
+
+
 
 /**
  * Iterates through the entries pairs in the map,

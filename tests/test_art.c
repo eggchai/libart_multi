@@ -108,7 +108,9 @@ START_TEST(test_art_insert_search)
     char buf[512];
     FILE *f = fopen("tests/words.txt", "r");
 
+    //loop to insert
     uintptr_t line = 1;
+    //fgets: read a row from a specified stream to a string
     while (fgets(buf, sizeof buf, f)) {
         len = strlen(buf);
         buf[len-1] = '\0';
@@ -242,6 +244,7 @@ START_TEST(test_art_insert_random_delete)
 }
 END_TEST
 
+//
 int iter_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
     uint64_t *out = (uint64_t*)data;
     uintptr_t line = (uintptr_t)val;

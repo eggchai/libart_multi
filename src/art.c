@@ -143,11 +143,13 @@ static art_node** find_child(art_node *n, unsigned char c) {
     switch (n->type) {
         case NODE4:
             p.p1 = (art_node4*)n;
+            //traverse children
             for (i=0 ; i < n->num_children; i++) {
 		/* this cast works around a bug in gcc 5.1 when unrolling loops
 		 * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59124
 		 */
                 if (((unsigned char*)p.p1->keys)[i] == c)
+                    // attention &
                     return &p.p1->children[i];
             }
             break;
@@ -216,6 +218,7 @@ static art_node** find_child(art_node *n, unsigned char c) {
         default:
             abort();
     }
+    //this is why return a double-pointer, we can judge the key searching is exist or not by pointer
     return NULL;
 }
 
@@ -247,7 +250,7 @@ static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len
     // Fail if the key lengths are different
     if (n->key_len != (uint32_t)key_len) return 1;
 
-    // Compare the keys starting at the depth
+    // Compare the keys starting at the depth, 0 represents equal.
     return memcmp(n->key, key, key_len);
 }
 
@@ -275,6 +278,7 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
         }
 
         // Bail if the prefix does not match
+        //this is path compression of the paper. If prefix exists, need to compare and skip
         if (n->partial_len) {
             prefix_len = check_prefix(n, key, key_len, depth);
             if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
@@ -546,6 +550,7 @@ static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_
     return idx;
 }
 
+// Recursive insert
 static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *key, int key_len, void *value, int depth, int *old, int replace) {
     // If we are at a NULL node, inject a leaf
     if (!n) {
@@ -833,12 +838,14 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
     return NULL;
 }
 
+//scan the tree
 // Recursively iterates over the tree
 static int recursive_iter(art_node *n, art_callback cb, void *data) {
     // Handle base cases
     if (!n) return 0;
     if (IS_LEAF(n)) {
         art_leaf *l = LEAF_RAW(n);
+        //cb is a restriction, return 0 continue iteration, else stop iteration
         return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
     }
 
@@ -894,6 +901,21 @@ static int recursive_iter(art_node *n, art_callback cb, void *data) {
  */
 int art_iter(art_tree *t, art_callback cb, void *data) {
     return recursive_iter(t->root, cb, data);
+}
+
+/**
+ * Range Query
+ * @arg t  The tree to query
+ * @arg cb
+ * @arg data
+ * @arg low The query lower limit
+ * @arg high The query higher limit
+ */
+int range_query(art_tree *t, art_callback cb,
+                void *data,
+                const unsigned char *low,
+                const unsigned char *high){
+
 }
 
 /**
