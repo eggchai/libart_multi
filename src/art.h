@@ -203,8 +203,8 @@ int art_iter(art_tree *t, art_callback cb, void *data);
  * @arg low The query lower limit
  * @arg high The query higher limit
  */
-int range_query(art_tree *t, art_callback cb,
-                void *data,
+int range_query(art_node *n, art_callback cb,
+                void *data, int depth,
                 const unsigned char *low,
                 const unsigned char *high);
 

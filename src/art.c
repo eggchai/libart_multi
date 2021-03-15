@@ -911,12 +911,33 @@ int art_iter(art_tree *t, art_callback cb, void *data) {
  * @arg low The query lower limit
  * @arg high The query higher limit
  */
-int range_query(art_tree *t, art_callback cb,
-                void *data,
+int range_query(art_node *n, art_callback cb,
+                void *data, int depth,
                 const unsigned char *low,
                 const unsigned char *high){
-
+    art_node **child1, **child2;
+    int prefix_len;
+    child1 = find_child(n, low[depth]);
+    child2 = find_child(n, high[depth]);
+    if(child1 == child2){ //recursive
+        if(IS_LEAF(child1)){
+           //TODO: get value from leafNode
+        }else{
+            return range_query(*child1, cb, data, ++depth,low, high);
+        }
+    }else{
+        // low and key is not in a child node
+        // how to get internal children nodes between child1 and child2
+        // child1 and child2 are double pointer, so can access internal nodes
+        art_node **internal = child1;
+        while(internal < child2){
+            recursive_iter(*internal, cb, data);
+        }
+        // child1 and child2
+    }
+    return 0;
 }
+
 
 /**
  * Checks if a leaf prefix matches
