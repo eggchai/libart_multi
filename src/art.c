@@ -1027,19 +1027,44 @@ int art_iter(art_tree *t, art_callback cb, void *data) {
     return recursive_iter(t->root, cb, data);
 }
 
-//void* range_query_boundary(art_node *n, art_callback cb,
-//                              void *data, int depth,
-//                              const unsigned char *key,
-//                              bool direction){
-//    art_node **child;
-//    int prefix_len;
-//    //leaf node, return directly
-//    if(IS_LEAF(n)){
-//        n = (art_node*)LEAF_RAW(n);
-//        return ((art_leaf*)n)->value;
-//    }
-//    //for the function of find_child, if cant find, it will return NULL
-//}
+void* range_query_boundary(art_node *n, art_callback cb,
+                              void *data, int depth,
+                              const unsigned char *key, int key_len,
+                              bool direction){
+    art_node **child;
+    int prefix_len;
+    //leaf node, return directly
+    if(IS_LEAF(n)){
+        n = (art_node*)LEAF_RAW(n);
+        if(!leaf_matches((art_leaf*)n, key, key_len, depth))
+            return ((art_leaf*)n)->value;
+        return NULL;
+    }
+    if (n->partial_len) {
+        prefix_len = check_prefix(n, key, key_len, depth);
+        if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
+            return NULL;
+        depth = depth + n->partial_len;
+    }
+    //for the function of find_child, if cant find, it will return NULL
+    child = find_child_boundary(n, key[depth], direction);
+    if(direction){
+        art_node **itr = child+1;
+        range_query_boundary(n, cb, data, ++depth, key, key_len, direction);
+        while(itr){
+            recursive_iter(*itr, cb, data);
+            itr++;
+        }
+    }else{
+        art_node **itr = child - 1;
+        range_query_boundary(n, cb, data, ++depth, key, key_len, direction);
+        while(itr){
+            recursive_iter(*itr, cb, data);
+            itr--;
+        }
+    }
+    return NULL;
+}
 
 
 /**
@@ -1050,33 +1075,42 @@ int art_iter(art_tree *t, art_callback cb, void *data) {
  * @arg low The query lower limit
  * @arg high The query higher limit
  */
-//int range_query(art_node *n, art_callback cb,
-//                void *data, int depth,
-//                const unsigned char *low,
-//                const unsigned char *high){
-//    art_node **child1, **child2;
-//    int prefix_len;
-//    child1 = find_child(n, low[depth]);
-//    child2 = find_child(n, high[depth]);
-//    if(child1 == child2){ //recursive
-//        if(IS_LEAF(child1)){
-//           //TODO: get value from leafNode
-//        }else{
-//            return range_query(*child1, cb, data, ++depth,low, high);
-//        }
-//    }else{
-//        // low and key is not in a child node
-//        // how to get internal children nodes between child1 and child2
-//        // child1 and child2 are double pointer, so can access internal nodes
-//        art_node **internal = child1;
-//        while(internal < child2){
-//            recursive_iter(*internal, cb, data);
-//        }
-//        // child1 and child2
-//
-//    }
-//    return 0;
-//}
+void* range_query(art_node *n, art_callback cb,
+                void *data, int depth,
+                const unsigned char *low, int low_len,
+                const unsigned char *high, int high_len){
+    art_node **child1, **child2;
+    int prefix_len;
+    child1 = find_child(n, low[depth]);
+    child2 = find_child(n, high[depth]);
+    if(child1 == child2){ //recursive
+        if(IS_LEAF(n)){
+           n = (art_node*)LEAF_RAW(n);
+            // Check if the expanded path matches
+            if (!leaf_matches((art_leaf*)n, low, low_len, depth)) {
+                return ((art_leaf*)n)->value;
+            }
+            return NULL;
+        }else{
+           range_query(*child1, cb, data, ++depth,
+                       low, low_len, high, high_len);
+        }
+    }else{
+        // low and key is not in a child node
+        // how to get internal children nodes between child1 and child2
+        // child1 and child2 are double pointer, so can access internal nodes
+        art_node **internal = child1;
+        while(internal < child2){
+            recursive_iter(*internal, cb, data);
+        }
+        // child1 and child2
+        range_query_boundary(*child1, cb, data, ++depth,
+                             low, low_len, true);
+        range_query_boundary(*child2, cb, data, depth,
+                             high, high_len, false);
+    }
+    return NULL;
+}
 
 
 /**

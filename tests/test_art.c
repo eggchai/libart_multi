@@ -61,7 +61,7 @@ START_TEST(test_art_find_child_direction){
         line++;
     }
 
-    //test
+    //test find_child
 
     res = art_tree_destory(&t);
     fail_unless(res == 0);

@@ -198,9 +198,9 @@ art_leaf* art_maximum(art_tree *t);
 int art_iter(art_tree *t, art_callback cb, void *data);
 
 
-void* range_query_one_direction(art_node *n, art_callback cb,
+void* range_query_boundary(art_node *n, art_callback cb,
                               void *data, int depth,
-                              const unsigned char *key,
+                              const unsigned char *key, int key_len,
                               bool direction);
 
 /**
@@ -211,10 +211,10 @@ void* range_query_one_direction(art_node *n, art_callback cb,
  * @arg low The query lower limit
  * @arg high The query higher limit
  */
-int range_query(art_node *n, art_callback cb,
+void* range_query(art_node *n, art_callback cb,
                 void *data, int depth,
-                const unsigned char *low,
-                const unsigned char *high);
+                const unsigned char *low, int low_len,
+                const unsigned char *high, int high_len);
 
 
 
