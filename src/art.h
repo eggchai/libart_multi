@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <stdbool.h>
+
 #ifndef ART_H
 #define ART_H
 
@@ -194,6 +196,12 @@ art_leaf* art_maximum(art_tree *t);
  * @return 0 on success, or the return of the callback.
  */
 int art_iter(art_tree *t, art_callback cb, void *data);
+
+
+void* range_query_one_direction(art_node *n, art_callback cb,
+                              void *data, int depth,
+                              const unsigned char *key,
+                              bool direction);
 
 /**
  * Range Query

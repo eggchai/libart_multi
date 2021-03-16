@@ -222,6 +222,130 @@ static art_node** find_child(art_node *n, unsigned char c) {
     return NULL;
 }
 
+static art_node** find_child_boundary(art_node *n, unsigned char c, bool direction) {
+    int mask, bitfield;
+    union {
+        art_node4 *p1;
+        art_node16 *p2;
+        art_node48 *p3;
+        art_node256 *p4;
+    } p;
+    switch (n->type) {
+        case NODE4:
+            p.p1 = (art_node4*)n;
+            //traverse children
+            if(direction){//low
+                for(int i=0; i < n->num_children; i++){
+                    if(((unsigned char*)p.p1->keys)[i] >= c)
+                        return &p.p1->children[i];
+                }
+            }else{
+                for(int i=n->num_children-1; i>-1; i--){
+                    if(((unsigned char*)p.p1->keys)[i] <= c)
+                        return &p.p1->children[i];
+                }
+            }
+            break;
+
+            {
+                case NODE16:
+                    p.p2 = (art_node16*)n;
+
+                // support non-86 architectures
+#ifdef __i386__
+                // Compare the key to all 16 stored keys
+                __m128i cmp;
+                cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c),
+                        _mm_loadu_si128((__m128i*)p.p2->keys));
+
+                // Use a mask to ignore children that don't exist
+                mask = (1 << n->num_children) - 1;
+                bitfield = _mm_movemask_epi8(cmp) & mask;
+#else
+#ifdef __amd64__
+                // Compare the key to all 16 stored keys
+                //Variables of type _m128i are automatically
+                // aligned on 16-byte boundaries.
+                __m128i cmp;
+                if(direction){
+                    cmp = _mm_cmpgt_epi8(_mm_set1_epi8(c),
+                                         _mm_loadu_si128((__m128i*)p.p2->keys));
+                }else{
+                    cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
+                                         _mm_loadu_si128((__m128i*)p.p2->keys));
+                }
+                cmp |= _mm_cmpeq_epi8(_mm_set1_epi8(c),
+                                      _mm_loadu_si128((__m128i*)p.p2->keys));
+                // Use a mask to ignore children that don't exist
+                mask = (1 << n->num_children) - 1;
+                bitfield = _mm_movemask_epi8(cmp) & mask;
+#else
+                // Compare the key to all 16 stored keys
+                bitfield = 0;
+                for (i = 0; i < 16; ++i) {
+                    if (p.p2->keys[i] == c)
+                        bitfield |= (1 << i);
+                }
+
+                // Use a mask to ignore children that don't exist
+                mask = (1 << n->num_children) - 1;
+                bitfield &= mask;
+#endif
+#endif
+
+                /*
+                 * If we have a match (any bit set) then we can
+                 * return the pointer match using ctz to get
+                 * the index.
+                 */
+                if (bitfield){
+                    if(direction)
+                        return &p.p2->children[__builtin_clz(bitfield) - (16 - n->num_children)];
+                    else
+                        return &p.p2->children[n->num_children - __builtin_ffs(bitfield)];
+                }
+                break;
+            }
+
+        case NODE48:
+            //Node48 used a 6 bits array to store pointer to 48array.
+            p.p3 = (art_node48*)n;
+            //Traverse in one direction to find the first greater than or less than c
+            if(direction){
+                //from key find first greater than c
+                for(int i=c; i < 256; i++){
+                    if(p.p3->keys[i])
+                        return &p.p3->children[i-1];
+                }
+            }else{
+                for(int i=c; i > 0; i--){
+                    if(p.p3->keys[i])
+                        return &p.p3->children[i-1];
+                }
+            }
+            break;
+
+        case NODE256:
+            if(direction){
+                for(int i=c; i<256; i++){
+                    if(p.p4->children[c])
+                        return &p.p4->children[i];
+                }
+            }else{
+                for(int i=c; i>-1; i--){
+                    if(p.p4->children[c])
+                        return &p.p4->children[i];
+                }
+            }
+           break;
+
+        default:
+            abort();
+    }
+    //this is why return a double-pointer, we can judge the key searching is exist or not by pointer
+    return NULL;
+}
+
 // Simple inlined if
 static inline int min(int a, int b) {
     return (a < b) ? a : b;
@@ -903,6 +1027,21 @@ int art_iter(art_tree *t, art_callback cb, void *data) {
     return recursive_iter(t->root, cb, data);
 }
 
+//void* range_query_boundary(art_node *n, art_callback cb,
+//                              void *data, int depth,
+//                              const unsigned char *key,
+//                              bool direction){
+//    art_node **child;
+//    int prefix_len;
+//    //leaf node, return directly
+//    if(IS_LEAF(n)){
+//        n = (art_node*)LEAF_RAW(n);
+//        return ((art_leaf*)n)->value;
+//    }
+//    //for the function of find_child, if cant find, it will return NULL
+//}
+
+
 /**
  * Range Query
  * @arg t  The tree to query
@@ -911,32 +1050,33 @@ int art_iter(art_tree *t, art_callback cb, void *data) {
  * @arg low The query lower limit
  * @arg high The query higher limit
  */
-int range_query(art_node *n, art_callback cb,
-                void *data, int depth,
-                const unsigned char *low,
-                const unsigned char *high){
-    art_node **child1, **child2;
-    int prefix_len;
-    child1 = find_child(n, low[depth]);
-    child2 = find_child(n, high[depth]);
-    if(child1 == child2){ //recursive
-        if(IS_LEAF(child1)){
-           //TODO: get value from leafNode
-        }else{
-            return range_query(*child1, cb, data, ++depth,low, high);
-        }
-    }else{
-        // low and key is not in a child node
-        // how to get internal children nodes between child1 and child2
-        // child1 and child2 are double pointer, so can access internal nodes
-        art_node **internal = child1;
-        while(internal < child2){
-            recursive_iter(*internal, cb, data);
-        }
-        // child1 and child2
-    }
-    return 0;
-}
+//int range_query(art_node *n, art_callback cb,
+//                void *data, int depth,
+//                const unsigned char *low,
+//                const unsigned char *high){
+//    art_node **child1, **child2;
+//    int prefix_len;
+//    child1 = find_child(n, low[depth]);
+//    child2 = find_child(n, high[depth]);
+//    if(child1 == child2){ //recursive
+//        if(IS_LEAF(child1)){
+//           //TODO: get value from leafNode
+//        }else{
+//            return range_query(*child1, cb, data, ++depth,low, high);
+//        }
+//    }else{
+//        // low and key is not in a child node
+//        // how to get internal children nodes between child1 and child2
+//        // child1 and child2 are double pointer, so can access internal nodes
+//        art_node **internal = child1;
+//        while(internal < child2){
+//            recursive_iter(*internal, cb, data);
+//        }
+//        // child1 and child2
+//
+//    }
+//    return 0;
+//}
 
 
 /**

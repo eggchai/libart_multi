@@ -44,6 +44,30 @@ START_TEST(test_art_insert)
 }
 END_TEST
 
+START_TEST(test_art_find_child_direction){
+    test_tree t;
+    int res = art_tree_init(&t);
+    fail_unless(res == 0);
+    int len;
+    char buf[512];
+    FILE *f = fopen("tests/words.txt", "r");
+
+    uintptr_t line = 1;
+    while (fgets(buf, sizeof buf, f)) {
+        len = strlen(buf);
+        buf[len-1] = '\0';
+        fail_unless(NULL == art_insert(&t, (unsigned char*)buf, len, (void*)line));
+        fail_unless(art_size(&t) == line);
+        line++;
+    }
+
+    //test
+
+    res = art_tree_destory(&t);
+    fail_unless(res == 0);
+}
+END_TEST
+
 START_TEST(test_art_insert_verylong)
 {
     art_tree t;
