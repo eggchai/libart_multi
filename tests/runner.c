@@ -25,6 +25,7 @@ int main(void)
     tcase_add_test(tc1, test_art_long_prefix);
     tcase_add_test(tc1, test_art_insert_search_uuid);
     tcase_add_test(tc1, test_art_max_prefix_len_scan_prefix);
+    tcase_add_test(tc1, test_art_find_child_direction);
     tcase_set_timeout(tc1, 180);
 
     srunner_run_all(sr, CK_ENV);

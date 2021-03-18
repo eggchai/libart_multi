@@ -1252,7 +1252,7 @@ conftest.c:69:22: warning: null argument where non-null required (argument 3) [-
 conftest.c:67:15: warning: 'th' is used uninitialized in this function [-Wuninitialized]
    67 | pthread_t th; pthread_join(th, 0);
       |               ^~~~~~~~~~~~~~~~~~~
-/usr/bin/ld: /tmp/ccpH1bYl.o: in function `main':
+/usr/bin/ld: /tmp/cceerHkd.o: in function `main':
 /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:67: undefined reference to `pthread_join'
 /usr/bin/ld: /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:68: undefined reference to `__pthread_register_cancel'
 /usr/bin/ld: /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:69: undefined reference to `pthread_create'

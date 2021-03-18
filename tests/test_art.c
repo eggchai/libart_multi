@@ -44,29 +44,7 @@ START_TEST(test_art_insert)
 }
 END_TEST
 
-START_TEST(test_art_find_child_direction){
-    test_tree t;
-    int res = art_tree_init(&t);
-    fail_unless(res == 0);
-    int len;
-    char buf[512];
-    FILE *f = fopen("tests/words.txt", "r");
 
-    uintptr_t line = 1;
-    while (fgets(buf, sizeof buf, f)) {
-        len = strlen(buf);
-        buf[len-1] = '\0';
-        fail_unless(NULL == art_insert(&t, (unsigned char*)buf, len, (void*)line));
-        fail_unless(art_size(&t) == line);
-        line++;
-    }
-
-    //test find_child
-
-    res = art_tree_destory(&t);
-    fail_unless(res == 0);
-}
-END_TEST
 
 START_TEST(test_art_insert_verylong)
 {
@@ -278,6 +256,42 @@ int iter_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
     return 0;
 }
 
+int iter_cb2(void* data, const unsigned char* key, uint32_t key_len, void *val){
+    uint64_t *out = (uint64_t*)data;
+    uintptr_t line = (uintptr_t)val;
+    printf("%d\n", (int)line);
+    out[0]++;
+    out[1] += line;
+    return 0;
+}
+START_TEST(test_art_find_child_direction){
+        printf("start test range query\n");
+        art_tree t;
+        int res = art_tree_init(&t);
+        fail_unless(res == 0);
+
+        int len;
+        char buf[512];
+        FILE *f = fopen("tests/int.txt", "r");
+
+        uintptr_t line = 1;
+        while (fgets(buf, sizeof buf, f)) {
+            len = strlen(buf);
+            buf[len-1] = '\0';
+            fail_unless(NULL == art_insert(&t, (unsigned char*)buf, len, (void*)line));
+            fail_unless(art_size(&t) == line);
+            line++;
+        }
+
+        //test range query
+        uintptr_t out[] = {0, 0};
+        fail_unless(range_query((art_node*)t.root, iter_cb2, out, 0, (const unsigned char*)"0121",4, (const unsigned char*)"0442", 4) == 1);
+        fail_unless(out[0] == line);
+
+        res = art_tree_destroy(&t);
+        fail_unless(res == 0);
+    }
+END_TEST
 START_TEST(test_art_insert_iter)
 {
     art_tree t;
@@ -286,7 +300,7 @@ START_TEST(test_art_insert_iter)
 
     int len;
     char buf[512];
-    FILE *f = fopen("tests/words.txt", "r");
+    FILE *f = fopen("tests/int.txt", "r");
 
     uint64_t xor_mask = 0;
     uintptr_t line = 1, nlines;
