@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <check.h>
@@ -278,14 +279,14 @@ START_TEST(test_art_find_child_direction){
         while (fgets(buf, sizeof buf, f)) {
             len = strlen(buf);
             buf[len-1] = '\0';
-            fail_unless(NULL == art_insert(&t, (unsigned char*)buf, len, (void*)line));
+            fail_unless(NULL == art_insert(&t, (unsigned char*)buf, len, (void*)((uintptr_t)atoi(buf))));
             fail_unless(art_size(&t) == line);
             line++;
         }
 
         //test range query
         uintptr_t out[] = {0, 0};
-        range_query((art_node*)t.root, iter_cb2, out, 0, (const unsigned char*)"0121",4, (const unsigned char*)"0442", 4);
+        range_query((art_node*)t.root, iter_cb2, out, 0, (const unsigned char*)"0121",4, (const unsigned char*)"2442", 4);
 //        fail_unless(out[0] == line);
 
         res = art_tree_destroy(&t);

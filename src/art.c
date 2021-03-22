@@ -381,6 +381,20 @@ static int check_prefix(const art_node *n, const unsigned char *key, int key_len
     return idx;
 }
 
+static int check_prefix_direction(const art_node *n, const unsigned char *key, int key_len, int depth){
+   int max_cmp = min(min(n->partial_len, MAX_PREFIX_LEN), key_len - depth);
+   int idx;
+   for(idx = 0; idx < max_cmp; idx++){
+       if(n->partial[idx] > key[depth + idx])
+           return -1;
+       if(n->partial[idx] < key[depth + idx])
+           return -2;
+   }
+   return idx;
+}
+
+
+
 /**
  * Checks if a leaf matches
  * @return 0 on success.
@@ -1064,15 +1078,23 @@ int range_query_boundary(art_node *n, art_callback cb,
         return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
     }
     if (n->partial_len) {
-        prefix_len = check_prefix(n, key, key_len, depth);
-        if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
+        prefix_len = check_prefix_direction(n, key, key_len, depth);
+        if(prefix_len == -1 && direction){
+            printf("prefix unequal\n");
+            return recursive_iter(n, cb, data);
+        }else if(prefix_len == -2 && !direction){
+            printf("prefix unequal\n");
+            return recursive_iter(n, cb, data);
+        }else if(prefix_len == min(MAX_PREFIX_LEN, n->partial_len)){
+            depth += n->partial_len;
+        }else
             return 1;
-        depth = depth + n->partial_len;
     }
     //for the function of find_child, if cant find, it will return NULL
     if(direction){
         child = find_child(n, key[depth], direction, border);
         if(child){
+            printf("left close\n");
             art_node **itr = child+1;
             while(itr <= *border){
                 recursive_iter(*itr, cb, data);
@@ -1082,6 +1104,7 @@ int range_query_boundary(art_node *n, art_callback cb,
             printf("left boundary level %d\n", depth);
             range_query_boundary(*child, cb, data, depth, key, key_len, direction);
         }else{
+            printf("left open\n");
             child = find_child_boundary(n, key[depth], direction, border);
             art_node **itr = child;
             while(itr <= *border){
@@ -1091,8 +1114,9 @@ int range_query_boundary(art_node *n, art_callback cb,
         }
         return 0;
     }else{
+        printf("right closed\n");
         child = find_child(n, key[depth], direction, border);
-        printf("child %p, *border %p, n %p\n",child, *border, &n);
+//        printf("child %p, *border %p, n %p\n",child, *border, &n);
         if(child){
             art_node **itr = child - 1;
             while(itr >= *border){
@@ -1103,6 +1127,7 @@ int range_query_boundary(art_node *n, art_callback cb,
             printf("boundary level %d\n", depth);
             range_query_boundary(*child, cb, data, depth, key, key_len, direction);
         }else{
+            printf("right open\n");
             child = find_child_boundary(n, key[depth], direction, border);
             art_node **itr = child;
             while(itr >= *border){
@@ -1151,6 +1176,7 @@ int range_query(art_node *n, art_callback cb,
     child2 = find_child(n, high[depth], true, border);
 //    recursive_iter(*child1, cb, data);
     if(child1 && child2){
+        printf("left closed and right closed\n");
         if(child1 == child2){
             return range_query(*child1, cb, data, ++depth, low, low_len, high, high_len);
         }else{
@@ -1161,28 +1187,32 @@ int range_query(art_node *n, art_callback cb,
                 itr++;
             }
             depth++;
-            printf("now level %d\n", depth);
             range_query_boundary(*child1, cb, data, depth, low, low_len, true);
             range_query_boundary(*child2, cb, data, depth, high, high_len, false);
             return 0;
         }
     }else if(child1 && !child2){
+        printf("left closed and right open\n");
         art_node **child_n_eq2 = find_child_boundary(n, high[depth], false, border);
         art_node **itr = child1 + 1;
         while(itr <= child_n_eq2){
             recursive_iter(*itr, cb, data);
+            itr++;
         }
         range_query_boundary(*child1, cb, data, ++depth, low, low_len, true);
         return 0;
     }else if(!child1  && child2){
+        printf("left open and right closed\n");
         art_node **child_n_eq1 = find_child_boundary(n, low[depth], true, border);
         art_node **itr = child_n_eq1;
         while(itr < child2){
             recursive_iter(*itr, cb, data);
+            itr++;
         }
         range_query_boundary(*child2, cb, data, ++depth, high, high_len, false);
         return 0;
     }else{
+        printf("left closed and right closed\n");
         art_node ***border1 = &tmp;
         art_node ***border2 = &tmp;
         art_node **child_n_eq1 = find_child_boundary(n, low[depth], true, border1);
@@ -1190,6 +1220,7 @@ int range_query(art_node *n, art_callback cb,
         art_node **itr = child_n_eq1;
         while(itr <= child_n_eq2){
             recursive_iter(*itr, cb, data);
+            itr++;
         }
         return 0;
     }
