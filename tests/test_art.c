@@ -286,7 +286,7 @@ START_TEST(test_art_find_child_direction){
 
         //test range query
         uintptr_t out[] = {0, 0};
-        range_query((art_node*)t.root, iter_cb2, out, 0, (const unsigned char*)"0121",4, (const unsigned char*)"2442", 4);
+        range_query((art_node*)t.root, iter_cb2, out, 0, (const unsigned char*)"0121",4, (const unsigned char*)"0447", 4);
 //        fail_unless(out[0] == line);
 
         res = art_tree_destroy(&t);
