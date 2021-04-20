@@ -759,7 +759,126 @@ static void add_child48_leaf(art_node48_leaf *n, art_node** ref,
     }
 }
 
-static void add_child16_leaf()
+static void add_child16_leaf(art_node48_leaf *n, art_node** ref,
+                             int depth, unsigned char *key,
+                             int key_len, void* value){
+    char c = key[depth];
+    if(n->n.num_children < 16){
+        unsigned mask = (1 << n->n.num_children) - 1;
+
+        //support non-x86 architectures
+        #ifdef __i386__
+             __m128i cmp;
+
+            // Compare the key to all 16 stored keys
+            cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
+                    _mm_loadu_si128((__m128i*)n->keys));
+
+            // Use a mask to ignore children that don't exist
+            unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
+            #else
+        #ifdef __amd64__
+            __m128i cmp;
+
+            // Compare the key to all 16 stored keys
+            cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
+                    _mm_loadu_si128((__m128i*)n->keys));
+
+            // Use a mask to ignore children that don't exist
+            unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
+        #else
+             // Compare the key to all 16 stored keys
+            unsigned bitfield = 0;
+            for (short i = 0; i < 16; ++i) {
+                 if (c < n->keys[i])
+                     bitfield |= (1 << i);
+            }
+
+            // Use a mask to ignore children that don't exist
+            bitfield &= mask;
+        #endif
+            #endif
+            //check if less than ANY
+            if(bitfield){
+                idx = __builtin_ctz(bitfield);
+                memmove(n->keys+idx+1, n->keys+idx, n->n.num_children - idx);
+                memmove(n->children+idx+1, n->children+idx,
+                        (n->n.num_children - idx)*sizeof(void*));
+            } else
+                idx = n->n.num_children;
+            //FIXME：上面的代码都是照抄的，不知道是不是符合要求。
+            //set the child
+            n->keys[idx] = keys[depth];
+            n->children[idx].key_len = key_len;
+            n->children[idx].value = value;
+            memcpy(n->children[idx].key, key, key_len);
+    } else {
+        art_node48_leaf *new_node = (art_node48_leaf*)alloc_node(NODE48LEAF);
+
+        //将原来在Node16Leaf中的数据拷贝到新节点
+        //因为是叶子节点，所以叶子结点中的数据需要一个一个全部拷贝
+        for(int i=0; i<n->n.num_children; ++i){
+            new_node->keys[n->keys[i]] = i + 1;//FIXME:其他地方需要初始化为0吗
+            //FIXME:不清楚结构是否可以直接赋值
+            new_node->children[i] = n->children[i];
+        }
+        copy_header((art_node*)new_node, (art_node*)n);
+        *ref = (art_node*)new_node;
+        free(n);
+        add_child48(new_node, ref, depth, key, key_len, value);
+    }
+}
+
+static void add_child4_leaf(art_node48_leaf *n, art_node** ref,
+                            int depth, unsigned char *key,
+                            int key_len, void* value){
+    char c = key[depth];
+    if(n->n.num_children < 4){
+        int idx;
+        for(idx = 0; idx < n->num_children; idx++){
+            if(c < n->keys[idx]) break;
+        }
+        //FIXME:为了保持节点内有序，所有需要先得到c应当插入的位置，并将后续的数据后移一位，这里直接用了前面的，应该是不对的。
+        memmove(n->keys+idx+1, n->keys+idx, n->n.num_children - idx);
+        memmove(n->children+idx+1, n->children+idx,
+                (n->n.num_children - idx)*sizeof(void*));
+
+        //插入
+        n->keys[idx] = c;
+        n->children[idx].key_len = key_len;
+        n->children[idx].value = value;
+        memcpy(n->children[idx].key, key, key_len);
+        n->n.num_children++;
+    } else {
+        art_node4_leaf *new_node = (art_node16_leaf*)alloc_node(NODE16LEAF);
+
+        //拷贝数据
+        //FIXME:不太清楚可不可以使用memcpy
+        memcpy(new_node->children, n->children, sizeof(art_leaf)*n->n.num_children);
+        memcpy(new_node->keys, n->keys, sizeof(unsigned char)*n->n.num_children);
+        copy_header((art_node*)new_node, (art_node*)n);
+        *ref = (art_node*)new_node;
+        free(n);
+        add_child16_leaf(new_node, ref, depth, key, key_len, value);
+    }
+}
+
+static void add_child_leaf(art_node48_leaf *n, art_node** ref,
+                           int depth, unsigned char *key,
+                           int key_len, void* value){
+    switch(n->type){
+        case NODE4:
+            return add_child4_leaf((art_node*)n, ref, depth, key, key_len, value);
+        case NODE16:
+            return add_child16_leaf((art_node4*)n, ref, depth, key, key_len, value);
+        case NODE48:
+            return add_child48_leaf((art_node48*)n, ref, depth, key, key_len, value);
+        case NODE256:
+            return add_child256_leaf((art_node*)n, ref, depth, key, key_len, value);
+        default:
+            abort();
+    }
+}
 
 /**
  * Calculates the index at which the prefixes mismatch
@@ -793,19 +912,44 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
         return NULL;
     }
     if(n->type < 5){//inner node
-        if(n->partial_len){// have prefix
-            //prefix match
-        } else { //no prefix
+        int prefix_diff = 0;
+        bool recursive_flag = true;
+        if(n->partial_len){
+           prefix_diff = prefix_mismatch(n, key, key_len, depth);
+           if((uint32_t)prefix_diff >= n->partial_len)
+               depth += n->partial_len;
+           else
+               recursive_flag = false;
+        }
 
+        if(recursive_flag){
+            art_node **tmp = &n;
+            art_node *** border = &tmp;
+            art_node **child = find_child(n, key[depth], true, border);
+            if(child){
+                return recursive_insert(*child, child, key, key_len,
+                                        value, depth+1, old, replace);
+            }
+            //no child, node goes within us
+            art_node4_leaf *l = make_leaf(key, key_len, value, depth+1);
+            //how to add_child
+            add_child(n, ref, key[depth], l);
+            return NULL;
+        } else {
+            //有前缀但是不匹配
         }
     } else {//leaf node
         if(n->partial_len){// have prefix
-
+            //首先进行前缀匹配
         }else{//no prefix
-            // no prefix and is leaf node
+            //迭代插入应该是不支持重复的key的
+            //当前是 叶子节点并且没有前缀，需要的只是插入进去就好了
+            //FIXME：需要处理路径压缩的情况
+            add_child_leaf(n, &n, depth, key, key_len, value);
         }
     }
 
+    //FIXME：这个叶子节点并不是开始想的是第一个节点，而是路径压缩的处理，仔细看里面是如何处理前缀问题的。
 //    // If we are at a leaf, we need to replace it with a node
 //    if (IS_LEAF(n)) {
 //        art_leaf *l = LEAF_RAW(n);

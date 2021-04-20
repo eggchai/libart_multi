@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/libart.iml" filepath="$PROJECT_DIR$/.idea/libart.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/libart_multi.iml" filepath="$PROJECT_DIR$/.idea/libart_multi.iml" />
     </modules>
   </component>
 </project>
