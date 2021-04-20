@@ -12,6 +12,10 @@ extern "C" {
 #define NODE16  2
 #define NODE48  3
 #define NODE256 4
+#define NODE4LEAF 5
+#define NODE16LEAF 6
+#define Node48LEAF 7
+#define Node256LEAF 8
 
 #define MAX_PREFIX_LEN 10
 

@@ -41,6 +41,14 @@ static art_node* alloc_node(uint8_t type) {
         case NODE256:
             n = (art_node*)calloc(1, sizeof(art_node256));
             break;
+        case NODE4LEAF:
+            n = (art_node*)calloc(1, sizeof(art_node4_leaf));
+        case NODE16LEAF:
+            n = (art_node*)calloc(1, sizeof(art_node16_leaf));
+        case NODE48LEAF:
+            n = (art_node*)calloc(1, sizeof(art_node48_leaf));
+        case NODE256LEAF:
+            n = (art_node*)calloc(1, sizeof(art_node256_leaf));
         default:
             abort();
     }
@@ -708,6 +716,51 @@ static void add_child(art_node *n, art_node **ref, unsigned char c, void *child)
     }
 }
 
+//this leaf is not initialize now, so add operation only care add.
+static void add_child256_leaf(art_node256_leaf *n, art_node** ref,
+                              int depth, unsigned char *key,
+                              int key_len, void* value){
+    (void)ref;
+    char c = key[depth];
+    if(n->children[c].key_len == -1){
+        n->n.num_children++;
+    }
+    n->children[c].key_len = key_len;
+    n->children[c].value = value;
+    memcpy(n->children[c].key, key, key_len);
+}
+
+static void add_child48_leaf(art_node48_leaf *n, art_node** ref,
+                             int depth, unsigned char *key,
+                             int key_len, void* value){
+    (void)ref;
+    char c = key[depth];
+    if(n->n.num_children < 48){
+        int pos = 0;
+        while(n->children[pos].key_len != -1) pos++;
+        n->children[pos].key_len = key_len;
+        n->keys[c] = pos + 1;
+        memcpy(n->children[c].key, key, key_len);
+        n->n.num_children++;//not considering have same key
+    } else {
+        art_node256_leaf *new_node = (art_node256_leaf*)alloc_node(NODE256LEAF);
+        for(int i=0; i<256; i++){
+            if(n->keys[i]){
+                int cur = n->keys[i] - 1;
+                new_node->children[i].key_len = n->children[cur].key_len;
+                memcpy(new_node->children[i].key, n->children[cur].key, n->children[cur].key_len)
+                new_node->children[i].value = n->children[cur].value;
+            }
+        }
+        copy_header((art_node*)new_node, (art_node*)n);
+        *ref = (art_node*)new_node;
+        free(n);
+        add_child256(new_node, ref, depth, key, key_len, value);
+    }
+}
+
+static void add_child16_leaf()
+
 /**
  * Calculates the index at which the prefixes mismatch
  */
@@ -750,7 +803,6 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
 
         }else{//no prefix
             // no prefix and is leaf node
-
         }
     }
 
