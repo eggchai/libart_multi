@@ -83,8 +83,32 @@ typedef struct {
 typedef struct {
     void *value;
     uint32_t key_len;
-    unsigned char key[];
+    unsigned char key[8];
 } art_leaf;
+
+typedef struct {
+    art_node n;
+    unsigned char keys[4];
+    art_leaf children[4];
+} art_node4_leaf;
+
+typedef struct {
+    art_node n;
+    unsigned char keys[16];
+    art_leaf children[16];
+} art_node16_leaf;
+
+typedef struct {
+    art_node n;
+    unsigned char keys[256];
+    art_leaf children[48];
+}
+
+typedef struct {
+    art_node n;
+    unsigned char keys[256];
+    art_leaf children[256];
+}
 
 /**
  * Main struct, points to root.

@@ -518,11 +518,33 @@ art_leaf* art_maximum(art_tree *t) {
     return maximum((art_node*)t->root);
 }
 
-static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
-    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len);
-    l->value = value;
-    l->key_len = key_len;
+//static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
+//    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len);
+//    l->value = value;
+//    l->key_len = key_len;
+//    memcpy(l->key, key, key_len);
+//    return l;
+//}
+
+static void init_leaf_array(art_leaf * leaves){
+    art_leaf *l = leaves;
+    while(l){
+        l.key_len = -1;
+        l++;
+    }
+}
+
+static art_node* make_leaf(const unsigned char *key, int key_len, void *value) {
+    art_node4_leaf *l = (art_node4_leaf*)calloc(1, sizeof(art_node4_leaf));
+    // l->n partial_len, partial, num_children
+    l->n.num_children = 1;
+    l->n.partial_len = -1;
+//    l->n.partial
+
+    init_leaf_array(l->children);
     memcpy(l->key, key, key_len);
+    l->children[0].key_len = key_len;
+    l->children[0].value = vlaue;
     return l;
 }
 
