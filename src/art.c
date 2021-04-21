@@ -142,6 +142,7 @@ int art_tree_destroy(art_tree *t) {
 extern inline uint64_t art_size(art_tree *t);
 #endif
 
+//find_child为什么要用双重指针？？——是为了判断查询的key是否存在，如果不存在这个指针就是
 static art_node** find_child(art_node *n, unsigned char c, bool direction, art_node*** border) {
     int i, mask, bitfield;
     union {
@@ -243,7 +244,7 @@ static art_node** find_child(art_node *n, unsigned char c, bool direction, art_n
         default:
             abort();
     }
-    //this is why return a double-pointer, we can judge the key searching is exist or not by pointer
+    //为什么用双重指针？可以通过这个指针判断是否存在？没道理呀——理由应该是可以通过这个双重指针直接修改这个节点。
     return NULL;
 }
 
@@ -372,6 +373,93 @@ static art_node** find_child_boundary(art_node *n, unsigned char c, bool directi
     return NULL;
 }
 
+//在叶子节点中，下面存的是art_leaf children[n]，返回的是这个n
+static int find_child_leaf(art_node* n, unsigned char c, bool direction, int *border){
+    int i, mask, bitfield;
+    union {
+        art_node4_leaf *p1;
+        art_node16_leaf *p2;
+        art_node48_leaf *p3;
+        art_node256_leaf *p4;
+    } p;
+    switch(n->type){
+        case NODE4LEAF:
+            p.p1 = (art_node4_leaf*)n;
+            //TODO: direction
+            for(int i=0; i<n->num_children; i++){
+                if(((unsigned char*)p.p1->keys)[i] == c){
+                    return i;
+                }
+            }
+            break;
+        case NODE16LEAF:
+
+        case NODE16:
+            p.p2 = (art_node16_leaf*)n;
+
+            // support non-86 architectures
+#ifdef __i386__
+            // Compare the key to all 16 stored keys
+                __m128i cmp;
+                cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c),
+                        _mm_loadu_si128((__m128i*)p.p2->keys));
+
+                // Use a mask to ignore children that don't exist
+                mask = (1 << n->num_children) - 1;
+                bitfield = _mm_movemask_epi8(cmp) & mask;
+#else
+#ifdef __amd64__
+            // Compare the key to all 16 stored keys
+                //Variables of type _m128i are automatically
+                // aligned on 16-byte boundaries.
+                __m128i cmp;
+                //FIXME:处理direction
+                // Use a mask to ignore children that don't exist
+                mask = (1 << n->num_children) - 1;
+                bitfield = _mm_movemask_epi8(cmp) & mask;
+#else
+            // Compare the key to all 16 stored keys
+            bitfield = 0;
+            for (i = 0; i < 16; ++i) {
+                if (p.p2->keys[i] == c)
+                    bitfield |= (1 << i);
+            }
+
+            // Use a mask to ignore children that don't exist
+            mask = (1 << n->num_children) - 1;
+            bitfield &= mask;
+#endif
+#endif
+
+            /*
+             * If we have a match (any bit set) then we can
+             * return the pointer match using ctz to get
+             * the index.
+             */
+            if (bitfield){
+                if(direction)
+                    return __builtin_ctz(bitfield;
+                else
+                    return 31-__builtin_clz(bitfield);
+            }
+            break;
+        case Node48LEAF:
+            p.p3 = (art_node48_leaf*)n;
+            i = p.p3->keys[c];
+            if(i)
+                return i-1;
+            break;
+        case Node256LEAF:
+            p.p4 = (art_node256_leaf*)n;
+            if(p.p4->children[c].key_len)
+                return c;
+            break;
+        default:
+            abort();
+    }
+    return -1;
+}
+
 // Simple inlined if
 static inline int min(int a, int b) {
     return (a < b) ? a : b;
@@ -461,11 +549,10 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
 }
 
 // Find the minimum leaf under a node
+//FIXME:修改minimum获取当前节点下最小的art_leaf
 static art_leaf* minimum(const art_node *n) {
     // Handle base cases
     if (!n) return NULL;
-    if (IS_LEAF(n)) return LEAF_RAW(n);
-
     int idx;
     switch (n->type) {
         case NODE4:
@@ -481,6 +568,20 @@ static art_leaf* minimum(const art_node *n) {
             idx=0;
             while (!((const art_node256*)n)->children[idx]) idx++;
             return minimum(((const art_node256*)n)->children[idx]);
+        case NODE4LEAF:
+            //art_node4_leaf中的children不是指针啊
+            return ((const art_node4_leaf*)n)->children;
+        case NODE16LEAF:
+            return ((const art_node16_leaf*)n)->children;
+        case NODE48LEAF:
+            idx = 0;
+            while(!((const art_node48_leaf*)n)->keys[idx]) idx++;
+            idx = ((const art_node48_leaf*)n)->keys[idx] - 1;
+            return ((const art_node48_leaf*)n)->children+idx;
+        case Node256LEAF:
+            idx = 0;
+            while(!((const art_node256_leaf*)n)->children[idx].key_len) idx++;
+            return ((const art_node256_leaf*)n)->children+idx;
         default:
             abort();
     }
@@ -537,7 +638,7 @@ art_leaf* art_maximum(art_tree *t) {
 static void init_leaf_array(art_leaf * leaves){
     art_leaf *l = leaves;
     while(l){
-        l.key_len = -1;
+        l.key_len = 0;
         l++;
     }
 }
@@ -548,11 +649,12 @@ static art_node* make_leaf(const unsigned char *key, int key_len, void *value, i
     // l->n partial_len, partial, num_children
     l->n.num_children = 1;
     l->n.partial_len = min(MAX_PREFIX_LEN, key_len - depth - 1);
-    memcpy(l->n.partial, key+depth, l->n.partial_len);
+    memcpy(l->n.partial, key+depth+1, l->n.partial_len);
     l->n.type = 5;
+    l->keys[0] = key[key+depth];
 
     init_leaf_array(l->children);
-    memcpy(l->key, key, key_len);
+    memcpy(l->children[0].key, key, key_len);
     l->children[0].key_len = key_len;
     l->children[0].value = vlaue;
     return l;
@@ -722,7 +824,7 @@ static void add_child256_leaf(art_node256_leaf *n, art_node** ref,
                               int key_len, void* value){
     (void)ref;
     char c = key[depth];
-    if(n->children[c].key_len == -1){
+    if(n->children[c].key_len){
         n->n.num_children++;
     }
     n->children[c].key_len = key_len;
@@ -737,7 +839,7 @@ static void add_child48_leaf(art_node48_leaf *n, art_node** ref,
     char c = key[depth];
     if(n->n.num_children < 48){
         int pos = 0;
-        while(n->children[pos].key_len != -1) pos++;
+        while(!n->children[pos].key_len) pos++;
         n->children[pos].key_len = key_len;
         n->keys[c] = pos + 1;
         memcpy(n->children[c].key, key, key_len);
@@ -880,6 +982,76 @@ static void add_child_leaf(art_node48_leaf *n, art_node** ref,
     }
 }
 
+//头信息不用变，只要把下面的art_leaf全部转化为art_node4_leaf，再加入新建的art_nodex就好了
+//需要depth是因为要向下构建叶子节点
+static art_node* transform(art_node *n, int depth){
+    union {
+        art_node4_leaf *p1;
+        art_node16_leaf *p2;
+        art_node48_leaf *p3;
+        art_node256_leaf *p4;
+    } p;
+    switch(n->type){
+        case NODE4LEAF:
+            p.p1 = (art_node4_leaf*)n;
+            art_node4 *new_node = (art_node4*) alloc_node(NODE4);
+            memcpy(new_node->keys, p.p1->keys, p.p1->n.num_children);
+            copy_header(new_node, n);
+            for(int i=0; i < p.p1->n.num_children; i++){
+                art_node4_leaf* new_leaf = make_leaf(p.p1->children[i].key,
+                                                     p.p1->children[i].key_len,
+                                                     p.p1->children[i].value,
+                                                     depth+n->partial_len+1);
+                new_node->children[i] = new_leaf;
+            }
+            return new_node;
+        case NODE16LEAF:
+            p.p2 = (art_node16_leaf*)n;
+            art_node16 *new_node = (art_node16*) alloc_node(NODE16);
+            copy_header(new_node, n);
+            memcpy(new_node->keys, p.p2->keys, p.p2->n.num_children);
+            for(int i=0; i < p.p1->n.num_children; i++){
+                art_node4_leaf* new_leaf = make_leaf(p.p2->children[i].key,
+                                                     p.p2->children[i].key_len,
+                                                     p.p2->children[i].value,
+                                                     depth+n->partial_len+1);
+                new_node->children[i] = new_leaf;
+            }
+            return new_node;
+        case NODE48LEAF:
+            p.p3 = (art_node48_leaf*)n;
+            art_node48 *new_node = (art_node48*) alloc_node(NODE48);
+            copy_header(new_node, n);
+            memcpy(new_node->keys, p.p3->keys, 256);
+            for(int i=0; i < 256; i++){
+                if(p.p3->keys[i]){
+                    art_node4_leaf* new_leaf = make_leaf(p.p3->children[i-1].key,
+                                                         p.p3->children[i-1].key_len,
+                                                         p.p3->children[i-1].value,
+                                                         depth+n->partial_len+1);
+                    new_node->children[i] = new_leaf;
+                }
+            }
+            return new_node;
+        case NODE256LEAF:
+            p.p4 = (art_node256_leaf*)n;
+            art_node256 *new_node = (art_node256*) alloc_node(NODE256);
+            copy_header(new_node, n);
+            for(int i=0; i < 256; i++){
+                if(p.p3->children[i].key_len){
+                    art_node4_leaf* new_leaf = make_leaf(p.p4->children[i-1].key,
+                                                         p.p4->children[i-1].key_len,
+                                                         p.p4->children[i-1].value,
+                                                         depth+n->partial_len+1);
+                    new_node->children[i]  = new_leaf;
+                }
+            }
+            return new_node;
+        default:
+            abort();
+    }
+}
+
 /**
  * Calculates the index at which the prefixes mismatch
  */
@@ -911,18 +1083,18 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
         *ref = (art_node*)make_leaf(key, key_len, value, 0);
         return NULL;
     }
-    if(n->type < 5){//inner node
-        int prefix_diff = 0;
-        bool recursive_flag = true;
-        if(n->partial_len){
-           prefix_diff = prefix_mismatch(n, key, key_len, depth);
-           if((uint32_t)prefix_diff >= n->partial_len)
-               depth += n->partial_len;
-           else
-               recursive_flag = false;
-        }
+    int prefix_diff = 0;
+    bool recursive_flag = true;
+    if(n->partial_len){
+        prefix_diff = prefix_mismatch(n, key, key_len, depth);
+        if((uint32_t)prefix_diff >= n->partial_len)
+            depth += n->partial_len;
+        else
+            recursive_flag = false;
+    }
 
-        if(recursive_flag){
+    if(n->type < 5){//inner node
+        if(recursive_flag){//有前缀且匹配和无前缀是一种情况
             art_node **tmp = &n;
             art_node *** border = &tmp;
             art_node **child = find_child(n, key[depth], true, border);
@@ -936,16 +1108,81 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
             add_child(n, ref, key[depth], l);
             return NULL;
         } else {
-            //有前缀但是不匹配
+            //有前缀但是不匹配，需要建立新的inner node(art_node4)在上面
+            art_node4 *new_node= (art_node4*)alloc_node(NODE4);
+            *ref = (art_node4*)new_node;
+            new_node->n.partial_len = prefix_diff;
+            memcpy(new_node->n.partial, n->partial, min(MAX_PREFIX_LEN, n->partial_len));
+
+            //调整原先的节点n的前缀
+            if(n->partial_len <= MAX_PREFIX_LEN){ //n中的前缀是完全的
+                add_child4(new_node, ref, n->partial[prefix_diff], n);
+                n->partial_len -= (prefix_diff+1);
+                memmove(n->partial, n->partial+prefix_diff+1,
+                        min(MAX_PREFIX_LEN, n->partial_len));
+            } else { //n中的前缀是不完全的，所以需要找到下面的一个数据，找到一个key，把因为过长截掉的前缀换回来一些
+                n->partial_len -= (prefix_diff+1);
+                art_leaf *l = minimum(n);
+                //这里是把当前节点n加入到新建的上面的中间节点node中
+                add_child4(new_node, ref, l->key[depth+prefix_diff], n);
+                memcpy(n->partial, l->key+depth+prefix_diff+1,
+                       min(MAX_PREFIX_LEN, n->partial_len));
+            }
+            //FIXME:因为前缀不匹配，这里要创建一个叶子节点把新插入的key插进去，然后
+            art_node *new_leaf = make_leaf(key,key_len, value, depth+prefix_diff+1);
+            add_child4(new_node, ref, key[depth+prefix_diff], new_leaf);
+            return NULL;
+    } else {//叶子结点——先找到对应的key
+        if(recursive_flag){
+            //还需要写一个在叶子结点查询的函数
+            //TODO：写一个find_child_leaf函数，返回指向art_leaf的指针
+            int *border;
+            int l = find_child_leaf(n, key[depth], true, border);
+            if(l != -1){
+                //有孩子，这里需要判断是否相等
+                if(!leaf_matches(&(n->children[l]), key, key_len, depth)){//如果key相等，memcmp函数是相等返回0
+                    *old = 1;
+                    void *old_val = *l->value;
+                    if(replace) *l->value = value;
+                    return old_val;
+                }
+                //先把这个叶子转化为中间节点，然后插入
+                art_node *new_node = transform(n);
+                *ref = new_node;
+                recursive_insert(new_node, ref, key, key_len, value, depth, old, replace);//下面要修改扫描整个节点的过程
+            } else {
+                //没有孩子的情况，直接插入
+                n->children[i].key_len = key_len;
+                memcpy(n->children[i].key, key, key_len);
+                n->children[i].value = value;
+            }
         }
-    } else {//leaf node
-        if(n->partial_len){// have prefix
-            //首先进行前缀匹配
-        }else{//no prefix
-            //迭代插入应该是不支持重复的key的
-            //当前是 叶子节点并且没有前缀，需要的只是插入进去就好了
-            //FIXME：需要处理路径压缩的情况
-            add_child_leaf(n, &n, depth, key, key_len, value);
+            return NULL;
+        } else {//在叶子上有前缀，但是没有匹配上，和在中间节点上一样，也是要在上面构建一个中间节点
+            art_node4 *new_node = (art_node4*) alloc_node(NODE4);
+            *ref = (art_node4*)new_node;
+            new_node->n.partial_len = prefix_diff;
+            memcpy(new_node->n.partial, n->partial, min(MAX_PREFIX_LEN, n->partial_len));
+            //调整原来节点的前缀
+            if(n->partial_len <= MAX_PREFIX_LEN){
+                add_child4(new_node, ref, n->partial[prefix_diff], n);
+                n->partial_len -= (prefix_diff + 1);
+                memmove(n->partial, n->partial+prefix_diff+1,
+                        min(MAX_PREFIX_LEN, n->partial_len));
+            } else {
+                n->partial_len -= (prefix_diff + 1);
+                art_leaf *l = minimum(n);
+
+                add_child4(new_node, ref, l->key[depth+prefix_diff], n);
+                memcpy(n->partial, l->key+depth+prefix_diff+1,
+                       min(MAX_PREFIX_LEN, n->partial_len));
+            }
+            //这里的depth应该是多少？ 这里的new_leaf的前缀不必与n保持一致。
+            //FIXME：其实对于只有一个数据的node4，在前缀上是可以调整的，只调整前缀而不必再构建一层inner_node节点
+            //不知道为什么这里的不亮
+            art_node *new_leaf = make_leaf(key,key_len, value, depth+prefix_diff+1);
+            add_child4(new_node, ref, key[depth+prefix_diff], new_leaf);
+            return NULL;
         }
     }
 
@@ -1236,6 +1473,7 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
 
 // scan the tree
 // Recursively iterates over the tree
+//扫描整棵树
 static int recursive_iter(art_node *n, art_callback cb, void *data) {
     // Handle base cases
     if (!n) return 0;
@@ -1279,7 +1517,28 @@ static int recursive_iter(art_node *n, art_callback cb, void *data) {
                 if (res) return res;
             }
             break;
-
+        //新增：在叶子节点上的遍历
+        case NODE4LEAF:
+            art_node4_leaf *l = (art_node4_leaf*)n;
+            for(int i=0; i<n->num_children; i++){
+                cb(data, (const unsigned char*)l->children[i].key, l->children[i].key_len, l->children[i].value);
+            }
+            break;
+        case NODE16LEAF:
+            art_node16_leaf  *l = (art_node16_leaf*)n;
+            for(int i=0; i<n->num_children; i++){
+                cb(data, (const unsigned char*)l->children[i].key, l->children[i].key_len, l->children[i].value);
+            }
+            break;
+        case NODE48LEAF:
+            art_node48_leaf  *l = (art_node48_leaf*)n;
+            for(int i=0; i<n->num_children; i++){
+                if(l->keys[i]){
+                    cb(data, (const unsigned char*)l->children[l->keys[i]].key,
+                       l->children[l->keys[i]].key_len, l->children[l->keys[i]].value);
+                }
+            }
+            break;
         default:
             abort();
     }
@@ -1315,7 +1574,7 @@ int range_query_boundary(art_node *n, art_callback cb,
     }
     if (n->partial_len) {
         prefix_len = check_prefix_direction(n, key, key_len, depth);
-        if(prefix_len == -1 && direction){
+        if(prefix_len == 0 && direction){
             printf("prefix unequal\n");
             return recursive_iter(n, cb, data);
         }else if(prefix_len == -2 && !direction){

@@ -14,8 +14,8 @@ extern "C" {
 #define NODE256 4
 #define NODE4LEAF 5
 #define NODE16LEAF 6
-#define Node48LEAF 7
-#define Node256LEAF 8
+#define NODE48LEAF 7
+#define NODE256LEAF 8
 
 #define MAX_PREFIX_LEN 10
 
@@ -106,13 +106,12 @@ typedef struct {
     art_node n;
     unsigned char keys[256];
     art_leaf children[48];
-}
+} art_node48_leaf;
 
 typedef struct {
     art_node n;
-    unsigned char keys[256];
     art_leaf children[256];
-}
+} art_node256_leaf;
 
 /**
  * Main struct, points to root.
