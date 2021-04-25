@@ -1252,11 +1252,11 @@ conftest.c:69:22: warning: null argument where non-null required (argument 3) [-
 conftest.c:67:15: warning: 'th' is used uninitialized in this function [-Wuninitialized]
    67 | pthread_t th; pthread_join(th, 0);
       |               ^~~~~~~~~~~~~~~~~~~
-/usr/bin/ld: /tmp/cceerHkd.o: in function `main':
-/home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:67: undefined reference to `pthread_join'
-/usr/bin/ld: /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:68: undefined reference to `__pthread_register_cancel'
-/usr/bin/ld: /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:69: undefined reference to `pthread_create'
-/usr/bin/ld: /home/chen/CLionProjects/libart/deps/check-0.9.8/conftest.c:69: undefined reference to `__pthread_unregister_cancel'
+/usr/bin/ld: /tmp/ccL0b9il.o: in function `main':
+/home/chen/CLionProjects/libart_multi/deps/check-0.9.8/conftest.c:67: undefined reference to `pthread_join'
+/usr/bin/ld: /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/conftest.c:68: undefined reference to `__pthread_register_cancel'
+/usr/bin/ld: /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/conftest.c:69: undefined reference to `pthread_create'
+/usr/bin/ld: /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/conftest.c:69: undefined reference to `__pthread_unregister_cancel'
 collect2: error: ld returned 1 exit status
 configure:13598: $? = 1
 configure: failed program was:
@@ -1759,15 +1759,15 @@ lt_cv_sys_max_cmd_len=1572864
 ## Output variables. ##
 ## ----------------- ##
 
-ACLOCAL='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run aclocal-1.10'
+ACLOCAL='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run aclocal-1.10'
 AMDEPBACKSLASH='\'
 AMDEP_FALSE='#'
 AMDEP_TRUE=''
-AMTAR='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run tar'
+AMTAR='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run tar'
 AR='ar'
-AUTOCONF='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run autoconf'
-AUTOHEADER='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run autoheader'
-AUTOMAKE='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run automake-1.10'
+AUTOCONF='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run autoconf'
+AUTOHEADER='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run autoheader'
+AUTOMAKE='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run automake-1.10'
 AWK='mawk'
 CC='gcc'
 CCDEPMODE='depmode=gcc3'
@@ -1810,7 +1810,7 @@ LIBTOOL='$(SHELL) $(top_builddir)/libtool'
 LIPO=''
 LN_S='ln -s'
 LTLIBOBJS=''
-MAKEINFO='${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run makeinfo'
+MAKEINFO='${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run makeinfo'
 MKDIR_P='/usr/bin/mkdir -p'
 NM='/usr/bin/nm -B'
 NMEDIT=''
@@ -1869,7 +1869,7 @@ host_vendor='unknown'
 htmldir='${docdir}'
 includedir='${prefix}/include'
 infodir='${datarootdir}/info'
-install_sh='$(SHELL) /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/install-sh'
+install_sh='$(SHELL) /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/install-sh'
 libdir='${exec_prefix}/lib'
 libexecdir='${exec_prefix}/libexec'
 localedir='${datarootdir}/locale'

@@ -76,12 +76,12 @@ examplesrcDATA_INSTALL = $(INSTALL_DATA)
 exampletestsDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(example_DATA) $(examplesrc_DATA) $(exampletests_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run aclocal-1.10
-AMTAR = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run tar
+ACLOCAL = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run aclocal-1.10
+AMTAR = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run tar
 AR = ar
-AUTOCONF = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run autoconf
-AUTOHEADER = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run autoheader
-AUTOMAKE = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run automake-1.10
+AUTOCONF = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run autoconf
+AUTOHEADER = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run autoheader
+AUTOMAKE = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run automake-1.10
 AWK = mawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -123,7 +123,7 @@ LIBTOOL = $(SHELL) $(top_builddir)/libtool
 LIPO = 
 LN_S = ln -s
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/missing --run makeinfo
+MAKEINFO = ${SHELL} /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/missing --run makeinfo
 MKDIR_P = /usr/bin/mkdir -p
 NM = /usr/bin/nm -B
 NMEDIT = 
@@ -148,10 +148,10 @@ SHELL = /bin/bash
 STRIP = strip
 TEX = false
 VERSION = 0.9.8
-abs_builddir = /home/chen/CLionProjects/libart/deps/check-0.9.8/doc
-abs_srcdir = /home/chen/CLionProjects/libart/deps/check-0.9.8/doc
-abs_top_builddir = /home/chen/CLionProjects/libart/deps/check-0.9.8
-abs_top_srcdir = /home/chen/CLionProjects/libart/deps/check-0.9.8
+abs_builddir = /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc
+abs_srcdir = /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc
+abs_top_builddir = /home/chen/CLionProjects/libart_multi/deps/check-0.9.8
+abs_top_srcdir = /home/chen/CLionProjects/libart_multi/deps/check-0.9.8
 ac_ct_CC = gcc
 ac_ct_DUMPBIN = 
 acx_pthread_config = 
@@ -180,7 +180,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = $(SHELL) /home/chen/CLionProjects/libart/deps/check-0.9.8/build-aux/install-sh
+install_sh = $(SHELL) /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/build-aux/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -730,47 +730,47 @@ $(srcdir)/check.texi: money.1-2.h.diff \
 # think that means there is an error
 money.1-2.h.diff: $(eg_src)/money.1.h $(eg_src)/money.2.h
 	cd $(eg_root); \
-	diff -u src/money.1.h src/money.2.h > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u src/money.1.h src/money.2.h > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 money.1-3.c.diff: $(eg_src)/money.1.c $(eg_src)/money.3.c
 	cd $(eg_root); \
-	diff -u src/money.1.c src/money.3.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u src/money.1.c src/money.3.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 money.3-4.c.diff: $(eg_src)/money.3.c $(eg_src)/money.4.c
 	cd $(eg_root); \
-	diff -u src/money.3.c src/money.4.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u src/money.3.c src/money.4.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 money.4-5.c.diff: $(eg_src)/money.4.c $(eg_src)/money.5.c
 	cd $(eg_root); \
-	diff -u src/money.4.c src/money.5.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u src/money.4.c src/money.5.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 money.5-6.c.diff: $(eg_src)/money.5.c $(eg_src)/money.6.c
 	cd $(eg_root); \
-	diff -u src/money.5.c src/money.6.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u src/money.5.c src/money.6.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 check_money.1-2.c.diff: $(eg_tests)/check_money.1.c $(eg_tests)/check_money.2.c
 	cd $(eg_root); \
-	diff -u tests/check_money.1.c tests/check_money.2.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u tests/check_money.1.c tests/check_money.2.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 check_money.2-3.c.diff: $(eg_tests)/check_money.2.c $(eg_tests)/check_money.3.c
 	cd $(eg_root); \
-	diff -u tests/check_money.2.c tests/check_money.3.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u tests/check_money.2.c tests/check_money.3.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 check_money.3-6.c.diff: $(eg_tests)/check_money.3.c $(eg_tests)/check_money.6.c
 	cd $(eg_root); \
-	diff -u tests/check_money.3.c tests/check_money.6.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u tests/check_money.3.c tests/check_money.6.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 
 check_money.6-7.c.diff: $(eg_tests)/check_money.6.c $(eg_tests)/check_money.7.c
 	cd $(eg_root); \
-	diff -u tests/check_money.6.c tests/check_money.7.c > /home/chen/CLionProjects/libart/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
+	diff -u tests/check_money.6.c tests/check_money.7.c > /home/chen/CLionProjects/libart_multi/deps/check-0.9.8/doc/$@ || test $$? -eq 1; \
 	cd -;
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
